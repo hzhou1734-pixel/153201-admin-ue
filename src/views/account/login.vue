@@ -2,8 +2,15 @@
     <div class="login flex flex-col">
         <div class="flex-1 flex items-center justify-center">
             <div class="login-card flex rounded-md overflow-hidden">
-                <div class="flex-1 h-full hidden md:inline-block">
-                    <image-contain :src="config.login_image" :width="400" height="100%" />
+                <div
+                    class="login-banner hidden md:flex flex-none items-center justify-center w-[400px] h-full"
+                >
+                    <image-contain
+                        :src="config.login_image"
+                        width="100%"
+                        height="100%"
+                        fit="contain"
+                    />
                 </div>
                 <div
                     class="login-form bg-body flex flex-col justify-center px-10 py-10 md:w-[400px] w-[375px] flex-none mx-auto"
@@ -127,6 +134,10 @@ onMounted(() => {
     @apply min-h-screen bg-no-repeat bg-center bg-cover;
     .login-card {
         height: 400px;
+    }
+    /* 左侧展示位：白底 + 内边距，logo 居中完整显示（contain 不变形） */
+    .login-banner {
+        @apply bg-white p-8;
     }
 }
 </style>

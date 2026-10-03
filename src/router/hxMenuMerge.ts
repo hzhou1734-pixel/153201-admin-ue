@@ -102,9 +102,46 @@ function removeDefaultUserList(menus: any[]): any[] {
         })
 }
 
+/**
+ * 移除后台模板自带的冗余菜单
+ *
+ * 背景：本系统在 likeadmin 模板基础上二次开发，后端下发了若干与本业务无关的模板样例菜单，
+ * 本地无法改后端，故在融合阶段统一过滤（与 removeDefaultUserList 同一套做法）。
+ * 剔除项：
+ * - 「存储设置」「热门搜索」「系统维护」：模板样例功能，本项目不使用（对应 views/setting/storage、
+ *   views/setting/search、views/setting/system）。
+ * - 模板自带样例「工作台」：标题为工作台 / 首页 / 控制台，且**不是**本项目业务路由（非 /hx/*）。
+ *   本项目自定义业务工作台（`/hx/dashboard`，标题同为「工作台」）必须保留，故以路径前缀区分。
+ */
+const REMOVED_TEMPLATE_TITLES = ['存储设置', '热门搜索', '系统维护']
+const REMOVED_TEMPLATE_PATHS = ['/setting/storage', '/setting/search', '/setting/system']
+
+function isRemovableTemplateMenu(menu: any): boolean {
+    const title = String(menu.meta?.title || '').trim()
+    if (REMOVED_TEMPLATE_TITLES.includes(title)) return true
+    const path = String(menu.path || '')
+    if (REMOVED_TEMPLATE_PATHS.some((p) => path.includes(p))) return true
+    // 模板样例工作台：标题命中，且非本项目业务路由（保留 /hx/dashboard 自定义工作台）
+    if (/工作台|首页|控制台/.test(title) && !path.startsWith('/hx')) return true
+    return false
+}
+
+function removeTemplateMenus(menus: any[]): any[] {
+    return (menus || [])
+        .filter((menu) => !isRemovableTemplateMenu(menu))
+        .map((menu) => {
+            const next: any = { ...menu }
+            next.meta = menu.meta ? { ...menu.meta } : menu.meta
+            if (menu.children?.length) {
+                next.children = removeTemplateMenus(menu.children)
+            }
+            return next
+        })
+}
+
 /** 一级菜单排序：工作台固定第一，其后为业务菜单，最后是后台原有其余菜单 */
 export function mergeHxMenus(baseMenus: any[], hxTree: any[]): any[] {
-    const base = removeDefaultUserList(cloneMenus(baseMenus))
+    const base = removeTemplateMenus(removeDefaultUserList(cloneMenus(baseMenus)))
     const standalone: any[] = []
     let userHost: any = null
 
