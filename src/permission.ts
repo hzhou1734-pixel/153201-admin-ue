@@ -56,6 +56,15 @@ NProgress.configure({ showSpinner: false })
 
 const loginPath = PageEnum.LOGIN
 const defaultPath = PageEnum.INDEX
+/**
+ * 登录后默认落地页（红星钱谷业务工作台）
+ *
+ * 背景：likeadmin 模板默认落到「后端下发的第一个有效菜单」，本项目后端菜单首节点是模板样例
+ * 工作台（侧边栏已过滤隐藏），会导致登录后打开一个在导航上看不到的页面。
+ * 故显式落地到本项目业务工作台 `/hx/dashboard`：它是本地静态挂载路由（router/routes.ts），
+ * 必然存在且全角色可见；万一将来被下线，则回退「后端第一个有效菜单」的原有逻辑。
+ */
+const HX_HOME_ROUTE_NAME = 'HxDashboard'
 // 免登录白名单
 const whiteList: string[] = [PageEnum.LOGIN, PageEnum.ERROR_403]
 /**
@@ -94,8 +103,10 @@ router.beforeEach(async (to, from, next) => {
                     next(PageEnum.ERROR_403)
                     return
                 }
-                tabsStore.setRouteName(routeName!)
-                INDEX_ROUTE.redirect = { name: routeName }
+                // 登录 / 访问根路径的默认落地页：优先业务工作台，否则回退后端第一个有效菜单
+                const homeRouteName = router.hasRoute(HX_HOME_ROUTE_NAME) ? HX_HOME_ROUTE_NAME : routeName
+                tabsStore.setRouteName(homeRouteName!)
+                INDEX_ROUTE.redirect = { name: homeRouteName }
 
                 // 动态添加index路由
                 router.addRoute(INDEX_ROUTE)
