@@ -1,6 +1,6 @@
 {
     "name": "vue-project",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "license": "MIT",
     "scripts": {
         "dev": "vite",
@@ -29,7 +29,8 @@
         "vue-clipboard3": "^2.0.0",
         "vue-echarts": "^6.7.3",
         "vue-router": "^4.5.0",
-        "vuedraggable": "^4.1.0"
+        "vuedraggable": "^4.1.0",
+        "xlsx": "^0.18.5"
     },
     "devDependencies": {
         "@rushstack/eslint-patch": "^1.10.5",

@@ -1,8 +1,37 @@
 <template>
     <div class="hx-dashboard">
-        <!-- 顶部：工作台概览 -->
+        <!-- 顶部：工作台概览 + 时间筛选 -->
         <el-card class="!border-none mb-4" shadow="never">
-            <div class="text-xl font-medium">红星钱谷业务工作台</div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center">
+                    <span class="text-xl font-medium">红星钱谷业务工作台</span>
+                    <span class="text-tx-secondary text-xs ml-3">
+                        统计范围：{{ data.period_text || '全部（累计）' }}
+                        <template v-if="periodType !== 'all'">
+                            （时间筛选仅作用于下方核心指标卡片）
+                        </template>
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <el-radio-group v-model="periodType" @change="onTypeChange">
+                        <el-radio-button value="all">全部</el-radio-button>
+                        <el-radio-button value="day">日</el-radio-button>
+                        <el-radio-button value="month">月</el-radio-button>
+                        <el-radio-button value="year">年</el-radio-button>
+                    </el-radio-group>
+                    <el-date-picker
+                        v-if="periodType !== 'all'"
+                        v-model="periodDate"
+                        :type="pickerType"
+                        :format="pickerFormat"
+                        :value-format="pickerFormat"
+                        :placeholder="pickerPlaceholder"
+                        :clearable="false"
+                        style="width: 170px"
+                        @change="load"
+                    />
+                </div>
+            </div>
         </el-card>
 
         <!-- 核心指标 -->
@@ -203,6 +232,44 @@ const role = currentHxRole
 const data = ref<any>({})
 const coverage = ref<any>({})
 
+/** 时间筛选：all 全部 / day 日 / month 月 / year 年 */
+const periodType = ref('all')
+const periodDate = ref('')
+
+/** 日期选择器的类型 / 格式 / 占位文案随筛选类型变化 */
+const pickerType = computed(
+    () =>
+        ({ day: 'date', month: 'month', year: 'year' } as Record<string, string>)[periodType.value] ||
+        'date'
+)
+const pickerFormat = computed(
+    () =>
+        ({ day: 'YYYY-MM-DD', month: 'YYYY-MM', year: 'YYYY' } as Record<string, string>)[
+            periodType.value
+        ] || 'YYYY-MM-DD'
+)
+const pickerPlaceholder = computed(
+    () =>
+        ({ day: '选择日期', month: '选择月份', year: '选择年份' } as Record<string, string>)[
+            periodType.value
+        ] || '选择日期'
+)
+
+/** 按筛选类型从「数据最新日期」推导默认值，避免默认落在无数据的当天 */
+const defaultPeriodDate = (type: string) => {
+    const base = data.value.latest_date || new Date().toISOString().slice(0, 10)
+    if (type === 'day') return base.slice(0, 10)
+    if (type === 'month') return base.slice(0, 7)
+    if (type === 'year') return base.slice(0, 4)
+    return ''
+}
+
+/** 切换 全部/日/月/年：重置日期并按新条件重新统计 */
+const onTypeChange = () => {
+    periodDate.value = defaultPeriodDate(periodType.value)
+    load()
+}
+
 const groups = computed(() => data.value.groups || {})
 const charts = computed(() => data.value.charts || {})
 
@@ -342,7 +409,11 @@ const go = (path: string) => {
 }
 
 const load = async () => {
-    data.value = await dashboardOverview({ role: role.value })
+    data.value = await dashboardOverview({
+        role: role.value,
+        period: periodType.value === 'all' ? '' : periodType.value,
+        date: periodDate.value
+    })
     coverage.value = await dashboardCityCoverage()
 }
 

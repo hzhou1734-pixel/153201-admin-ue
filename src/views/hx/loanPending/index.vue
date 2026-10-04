@@ -29,6 +29,7 @@
                     <el-button type="primary" @click="resetPage">查询</el-button>
                     <el-button @click="resetParams">重置</el-button>
                     <el-button type="success" @click="openAdd">添加放款</el-button>
+                    <el-button :disabled="exporting" @click="handleExport">导出Excel</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -111,6 +112,7 @@ import { loanMarkPaid, loanPendingLists } from '@/api/hx/loan'
 import { ref } from 'vue'
 import { usePaging } from '@/hooks/usePaging'
 import feedback from '@/utils/feedback'
+import { exportHxExcel, fetchHxAllPages, type HxExportColumn } from '@/utils/hxExport'
 import { formatterAmount } from '@/utils/util'
 
 /**
@@ -130,6 +132,43 @@ const { pager, getLists, resetParams, resetPage } = usePaging({
     fetchFun: loanPendingLists,
     params: formData
 })
+
+/** 导出列：与列表展示一致；金额列导出为数值，便于 Excel 内二次统计 */
+const exportColumns: HxExportColumn[] = [
+    { label: '业务编号', value: 'sn', width: 18 },
+    { label: '客户姓名', value: 'customer_name', width: 12 },
+    { label: '放款金额(元)', value: (row) => Number(row.amount || 0), width: 16 },
+    {
+        label: '银行 / 支行',
+        value: (row) => `${row.bank_name || '—'} / ${row.branch_name || '—'}`,
+        width: 30
+    },
+    { label: '业务经办人', value: 'agent_name', width: 12 },
+    { label: '审批通过时间', value: 'sign_time', width: 20 },
+    { label: '放款状态', value: 'paid_status_text', width: 12 },
+    { label: '放款时间', value: (row) => row.pay_time || '—', width: 20 }
+]
+
+/** 正在导出：避免重复点击触发多次下载 */
+const exporting = ref(false)
+
+/** 导出 Excel：按当前筛选条件取全量数据落表（导出全部，不是仅当前页） */
+const handleExport = async () => {
+    if (exporting.value) return
+    exporting.value = true
+    feedback.loading('正在导出中...')
+    try {
+        const rows = await fetchHxAllPages(loanPendingLists, { ...formData })
+        exportHxExcel('放款记录', exportColumns, rows)
+        feedback.closeLoading()
+        feedback.msgSuccess(`已导出 ${rows.length} 条放款记录`)
+    } catch (error) {
+        feedback.closeLoading()
+        feedback.msgError('导出失败，请稍后重试')
+    } finally {
+        exporting.value = false
+    }
+}
 
 // 添加放款弹窗：列出审批通过待放款业务
 const showAdd = ref(false)

@@ -47,6 +47,7 @@
                 <el-form-item>
                     <el-button type="primary" @click="resetPage">查询</el-button>
                     <el-button @click="resetParams">重置</el-button>
+                    <el-button :disabled="exporting" @click="handleExport">导出Excel</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -190,6 +191,7 @@ import { HX_ROLE_GM, HX_ROLE_SUPER, currentHxRole } from '@/config/hxRoles'
 import { useDictOptions } from '@/hooks/useDictOptions'
 import { usePaging } from '@/hooks/usePaging'
 import feedback from '@/utils/feedback'
+import { exportHxExcel, fetchHxAllPages, type HxExportColumn } from '@/utils/hxExport'
 
 import AssignPopup from './assign.vue'
 import DetailDrawer from './detail.vue'
@@ -223,6 +225,43 @@ const { pager, getLists, resetParams, resetPage } = usePaging({
 const { optionsData } = useDictOptions<{ agent: any[] }>({
     agent: { api: agentAll }
 })
+
+/** 导出列：与列表展示一致；数量列导出为数值，便于 Excel 内二次统计 */
+const exportColumns: HxExportColumn[] = [
+    { label: '客户姓名', value: 'name', width: 14 },
+    { label: '客户类型', value: 'customer_type_text', width: 10 },
+    {
+        label: '企业名称',
+        value: (row) => (row.customer_type === 'person' ? '—' : row.company || '—'),
+        width: 30
+    },
+    { label: '手机号', value: 'mobile', width: 14 },
+    { label: '归属业务经办人', value: (row) => row.agent_name || '未分配', width: 18 },
+    { label: '绑定状态', value: 'bind_status_text', width: 12 },
+    { label: '注册时间', value: (row) => row.register_time || '—', width: 20 },
+    { label: '业务笔数', value: (row) => Number(row.business_count || 0), width: 10 }
+]
+
+/** 正在导出：避免重复点击触发多次下载 */
+const exporting = ref(false)
+
+/** 导出 Excel：按当前筛选条件取全量数据落表（导出全部，不是仅当前页） */
+const handleExport = async () => {
+    if (exporting.value) return
+    exporting.value = true
+    feedback.loading('正在导出中...')
+    try {
+        const rows = await fetchHxAllPages(customerLists, { ...formData })
+        exportHxExcel(isAssign.value ? '客户归属分配' : '客户列表', exportColumns, rows)
+        feedback.closeLoading()
+        feedback.msgSuccess(`已导出 ${rows.length} 条客户数据`)
+    } catch (error) {
+        feedback.closeLoading()
+        feedback.msgError('导出失败，请稍后重试')
+    } finally {
+        exporting.value = false
+    }
+}
 
 /** 归属变更权限：仅总经理（超级管理员同权）；已归属客户同样支持修改（按需求放开） */
 const roleCanAssign = computed(() => [HX_ROLE_GM, HX_ROLE_SUPER].includes(currentHxRole.value))

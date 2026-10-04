@@ -38,13 +38,13 @@ const BUSINESS_STATUS: Record<string, string> = {
     rejected: '已驳回'
 }
 
-/** 分状态汇总：笔数 + 金额 */
-function groupByStatus() {
+/** 分状态汇总：笔数 + 金额（默认统计全部业务，可传入筛选后的列表） */
+function groupByStatus(list: any[] = businesses) {
     const map: Record<string, { count: number; amount: number }> = {}
     Object.keys(BUSINESS_STATUS).forEach((key) => {
         map[key] = { count: 0, amount: 0 }
     })
-    businesses.forEach((item) => {
+    list.forEach((item) => {
         const bucket = map[item.status] || (map[item.status] = { count: 0, amount: 0 })
         bucket.count += 1
         bucket.amount += Number(item.amount) || 0
@@ -131,6 +131,54 @@ function countBankAgentOn(): number {
     return bankAgents.filter((item) => item.status === 1).length
 }
 
+/**
+ * 工作台时间筛选
+ * period：'' 全部 / 'day' 日 / 'month' 月 / 'year' 年
+ * date：day → 'YYYY-MM-DD'，month → 'YYYY-MM'，year → 'YYYY'
+ * 说明：仅作用于「核心指标卡片」；趋势 / 分布 / 基础数据总览保持累计口径。
+ */
+function makeTimeFilter(period?: string, date?: string) {
+    if (!period || !date) return () => true
+    const key = String(date)
+    return (value?: string) => {
+        if (!value) return false
+        const text = String(value)
+        if (period === 'day') return text.slice(0, 10) === key
+        if (period === 'month') return text.slice(0, 7) === key
+        if (period === 'year') return text.slice(0, 4) === key
+        return true
+    }
+}
+
+/** 时间筛选的中文范围描述 */
+function formatPeriod(period?: string, date?: string): string {
+    if (!period || !date) return '全部（累计）'
+    if (period === 'day') {
+        const [y, m, d] = date.split('-')
+        return `${y}年${Number(m)}月${Number(d)}日`
+    }
+    if (period === 'month') {
+        const [y, m] = date.split('-')
+        return `${y}年${Number(m)}月`
+    }
+    if (period === 'year') return `${date}年`
+    return '全部（累计）'
+}
+
+/** 数据中的最新日期：切换筛选类型时的默认值，避免默认落在无数据的当天 */
+function latestDate(): string {
+    const list = [
+        ...businesses.map((item) => item.submit_time),
+        ...customers.map((item) => item.create_time),
+        ...loans.map((item) => item.pay_time || item.create_time),
+        ...repayments.map((item) => item.confirm_time || item.upload_time)
+    ]
+        .filter(Boolean)
+        .map((item: string) => String(item).slice(0, 10))
+        .sort()
+    return list[list.length - 1] || new Date().toISOString().slice(0, 10)
+}
+
 /* ==================== 工作台总览 ==================== */
 
 export function dashboardOverview(params: any = {}) {
@@ -138,13 +186,18 @@ export function dashboardOverview(params: any = {}) {
         return request.get({ url: '/hx.dashboard/overview', params }, { ignoreCancelToken: true })
     }
     const role = params.role || ''
+    const period = params.period || ''
+    const date = params.date || ''
+    const inPeriod = makeTimeFilter(period, date)
+
+    /* -------- 累计口径：基础数据总览 / 图表使用，不随时间筛选变化 -------- */
     const statusMap = groupByStatus()
+    const sum = (list: any[]) => list.reduce((total, item) => total + (Number(item.amount) || 0), 0)
 
     // 放款
     const approving = loans.filter((item) => item.status === 'pending')
     const pendingLoan = loans.filter((item) => item.status === 'approved' && item.paid_status != 1)
     const paidLoan = loans.filter((item) => item.paid_status == 1)
-    const sum = (list: any[]) => list.reduce((total, item) => total + (Number(item.amount) || 0), 0)
 
     // 回款
     const pendingVoucher = repayments.filter((item) => item.status === 0)
@@ -154,6 +207,16 @@ export function dashboardOverview(params: any = {}) {
     // 机构
     const agentOn = agents.filter((item) => item.status == 1).length
     const branchOn = branches.filter((item) => item.status == 1).length
+
+    /* -------- 时间筛选口径：仅核心指标卡片使用（按各业务自然时间字段过滤） -------- */
+    const bizList = businesses.filter((item) => inPeriod(item.submit_time))
+    const custList = customers.filter((item) => inPeriod(item.create_time))
+    const statusMapCard = groupByStatus(bizList)
+    const cardPendingLoan = pendingLoan.filter((item) => inPeriod(item.create_time))
+    const cardPaidLoan = paidLoan.filter((item) => inPeriod(item.pay_time))
+    const cardPendingVoucher = pendingVoucher.filter((item) => inPeriod(item.upload_time))
+    const cardConfirmedVoucher = confirmedVoucher.filter((item) => inPeriod(item.confirm_time))
+    const periodLabel = period ? '本期' : '累计'
 
     // 趋势
     const months = recentMonths(6)
@@ -207,24 +270,29 @@ export function dashboardOverview(params: any = {}) {
     return delay({
         update_time: now(),
         role,
-        /** 核心指标卡：value 已换算为「万元」，便于大屏阅读 */
+        period,
+        /** 当前时间筛选范围（中文描述，供顶部展示） */
+        period_text: formatPeriod(period, date),
+        /** 数据中的最新日期，供前端切换筛选类型时作默认值 */
+        latest_date: latestDate(),
+        /** 核心指标卡：value 已换算为「万元」，便于大屏阅读；受时间筛选影响 */
         cards: [
             {
                 key: 'customer_total',
-                title: '客户总数',
-                value: customers.length,
+                title: period ? '新增客户' : '客户总数',
+                value: custList.length,
                 unit: '个',
-                hint: `未归属 ${customers.filter((i) => i.bind_status != 1).length} 个`,
+                hint: `未归属 ${custList.filter((i) => i.bind_status != 1).length} 个`,
                 path: '/hx/customer/list',
                 icon: 'el-icon-UserFilled',
                 color: '#4b7fff'
             },
             {
                 key: 'business_total',
-                title: '业务总数',
-                value: businesses.length,
+                title: period ? '本期业务' : '业务总数',
+                value: bizList.length,
                 unit: '笔',
-                hint: `累计申请 ${(sum(businesses) / 10000).toFixed(2)} 万元`,
+                hint: `${periodLabel}申请 ${(sum(bizList) / 10000).toFixed(2)} 万元`,
                 path: '/hx/audit/business',
                 icon: 'el-icon-Document',
                 color: '#6c5ce7'
@@ -232,9 +300,9 @@ export function dashboardOverview(params: any = {}) {
             {
                 key: 'business_auditing',
                 title: '审核中业务',
-                value: statusMap.auditing.count,
+                value: statusMapCard.auditing.count,
                 unit: '笔',
-                hint: `${(statusMap.auditing.amount / 10000).toFixed(2)} 万元待审核`,
+                hint: `${(statusMapCard.auditing.amount / 10000).toFixed(2)} 万元待审核`,
                 path: '/hx/audit/business',
                 icon: 'el-icon-Clock',
                 color: '#f7a325'
@@ -242,9 +310,9 @@ export function dashboardOverview(params: any = {}) {
             {
                 key: 'business_loaning',
                 title: '放款中业务',
-                value: statusMap.loaning.count,
+                value: statusMapCard.loaning.count,
                 unit: '笔',
-                hint: `签约后待放款 ${(statusMap.loaning.amount / 10000).toFixed(2)} 万元`,
+                hint: `签约后待放款 ${(statusMapCard.loaning.amount / 10000).toFixed(2)} 万元`,
                 path: '/hx/loan/approval',
                 icon: 'el-icon-Loading',
                 color: '#ff7d5c'
@@ -252,29 +320,29 @@ export function dashboardOverview(params: any = {}) {
             {
                 key: 'loan_pending',
                 title: '待放款登记',
-                value: pendingLoan.length,
+                value: cardPendingLoan.length,
                 unit: '笔',
-                hint: `${(sum(pendingLoan) / 10000).toFixed(2)} 万元待财务登记`,
+                hint: `${(sum(cardPendingLoan) / 10000).toFixed(2)} 万元待财务登记`,
                 path: '/hx/loan/pending/records',
                 icon: 'el-icon-CreditCard',
                 color: '#e2564d'
             },
             {
                 key: 'loan_paid',
-                title: '累计放款',
-                value: paidLoan.length,
+                title: period ? '期间放款' : '累计放款',
+                value: cardPaidLoan.length,
                 unit: '笔',
-                hint: `${(sum(paidLoan) / 10000).toFixed(2)} 万元已放款`,
+                hint: `${(sum(cardPaidLoan) / 10000).toFixed(2)} 万元已放款`,
                 path: '/hx/loan/pending/records',
                 icon: 'el-icon-Money',
                 color: '#1cb88a'
             },
             {
                 key: 'repay_confirmed',
-                title: '累计回款',
-                value: confirmedVoucher.length,
+                title: period ? '期间回款' : '累计回款',
+                value: cardConfirmedVoucher.length,
                 unit: '笔',
-                hint: `${(sum(confirmedVoucher) / 10000).toFixed(2)} 万元已确认`,
+                hint: `${(sum(cardConfirmedVoucher) / 10000).toFixed(2)} 万元已确认`,
                 path: '/hx/repayment/records',
                 icon: 'el-icon-Coin',
                 color: '#2bb3c0'
@@ -282,9 +350,9 @@ export function dashboardOverview(params: any = {}) {
             {
                 key: 'repay_pending',
                 title: '待确认凭证',
-                value: pendingVoucher.length,
+                value: cardPendingVoucher.length,
                 unit: '笔',
-                hint: `${(sum(pendingVoucher) / 10000).toFixed(2)} 万元待财务核对`,
+                hint: `${(sum(cardPendingVoucher) / 10000).toFixed(2)} 万元待财务核对`,
                 path: '/hx/repayment/pending',
                 icon: 'el-icon-Warning',
                 color: '#8a7bd6'

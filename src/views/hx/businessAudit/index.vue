@@ -41,6 +41,7 @@
                 <el-form-item>
                     <el-button type="primary" @click="resetPage">查询</el-button>
                     <el-button @click="resetParams">重置</el-button>
+                    <el-button :disabled="exporting" @click="handleExport">导出Excel</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -132,6 +133,7 @@ import RejectPopup from '@/views/hx/components/reject-popup.vue'
 import { useDictOptions } from '@/hooks/useDictOptions'
 import { usePaging } from '@/hooks/usePaging'
 import feedback from '@/utils/feedback'
+import { exportHxExcel, fetchHxAllPages, type HxExportColumn } from '@/utils/hxExport'
 import { formatterAmount } from '@/utils/util'
 
 import DetailPopup from './detail.vue'
@@ -169,6 +171,44 @@ const { pager, getLists, resetParams, resetPage } = usePaging({
 const { optionsData } = useDictOptions<{ bank: any[] }>({
     bank: { api: bankAll }
 })
+
+/** 导出列：与列表展示一致；金额 / 数量列导出为数值，便于 Excel 内二次统计 */
+const exportColumns: HxExportColumn[] = [
+    { label: '业务编号', value: 'sn', width: 18 },
+    { label: '客户姓名', value: 'customer_name', width: 12 },
+    { label: '企业名称', value: (row) => row.company || '—', width: 30 },
+    { label: '业务金额(元)', value: (row) => Number(row.amount || 0), width: 16 },
+    {
+        label: '银行 / 支行',
+        value: (row) => `${row.bank_name || '—'} / ${row.branch_name || '—'}`,
+        width: 30
+    },
+    { label: '业务经办人', value: 'agent_name', width: 12 },
+    { label: '材料数(份)', value: (row) => Number(row.material_count || 0), width: 12 },
+    { label: '提交时间', value: 'submit_time', width: 20 },
+    { label: '业务状态', value: 'status_text', width: 12 }
+]
+
+/** 正在导出：避免重复点击触发多次下载 */
+const exporting = ref(false)
+
+/** 导出 Excel：按当前筛选条件取全量数据落表（导出全部，不是仅当前页） */
+const handleExport = async () => {
+    if (exporting.value) return
+    exporting.value = true
+    feedback.loading('正在导出中...')
+    try {
+        const rows = await fetchHxAllPages(businessLists, { ...formData })
+        exportHxExcel('待审核业务', exportColumns, rows)
+        feedback.closeLoading()
+        feedback.msgSuccess(`已导出 ${rows.length} 条业务数据`)
+    } catch (error) {
+        feedback.closeLoading()
+        feedback.msgError('导出失败，请稍后重试')
+    } finally {
+        exporting.value = false
+    }
+}
 
 const handleDetail = async (row: any) => {
     showDetail.value = true
