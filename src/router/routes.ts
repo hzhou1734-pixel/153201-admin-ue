@@ -103,7 +103,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
                 name: 'HxAuditBusiness',
                 component: () => import('@/views/hx/businessAudit/index.vue'),
                 props: { mode: 'pending' },
-                meta: { title: '待审核业务' }
+                meta: { title: '风控初审' }
             },
             // 审核中心 · 经办人认证审核（银行经办人账号来源：用户申请 → 后台审核）
             {

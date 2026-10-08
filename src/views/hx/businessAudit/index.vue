@@ -115,13 +115,14 @@
             @reject="handleReject"
             @close="showDetail = false"
         />
-        <reject-popup
-            v-if="showReject"
-            ref="rejectRef"
-            title="驳回业务申请"
-            tips="驳回后客户端业务显示「已拒绝」，驳回理由必填并同步给客户与业务经办人。"
-            :quick-list="quickReasons"
-            @close="showReject = false"
+        <audit-popup
+            v-if="showAudit"
+            ref="auditRef"
+            :title="auditTitle"
+            :confirm-text="auditConfirmText"
+            :require-reason="auditMode === 'reject'"
+            :quick-list="auditMode === 'reject' ? quickReasons : []"
+            @close="showAudit = false"
         />
     </div>
 </template>
@@ -129,7 +130,7 @@
 <script lang="ts" setup name="hxBusinessAudit">
 import { businessLists, businessPass, businessReject } from '@/api/hx/audit'
 import { bankAll } from '@/api/hx/bank'
-import RejectPopup from '@/views/hx/components/reject-popup.vue'
+import AuditPopup from '@/views/hx/components/audit-popup.vue'
 import { useDictOptions } from '@/hooks/useDictOptions'
 import { usePaging } from '@/hooks/usePaging'
 import feedback from '@/utils/feedback'
@@ -139,7 +140,8 @@ import { formatterAmount } from '@/utils/util'
 import DetailPopup from './detail.vue'
 
 /**
- * 审核中心 · 待审核业务（P-06 / P-07）：材料查看与下载 + 审批操作（通过推送签约短信 / 驳回必填理由）。
+ * 审核中心 · 风控初审（原「待审核业务」，P-06 / P-07）：材料查看与下载 + 审批操作
+ * （通过推送签约短信 / 驳回必填理由）；通过、驳回均支持填写文字备注与上传补充图片（均为选填）。
  * 原「审核记录（留痕）」节点已删除（与「审批留痕」功能重复）。
  */
 const props = withDefaults(defineProps<{ mode?: 'pending' }>(), { mode: 'pending' })
@@ -147,9 +149,13 @@ const props = withDefaults(defineProps<{ mode?: 'pending' }>(), { mode: 'pending
 const isPending = computed(() => props.mode === 'pending')
 
 const detailRef = shallowRef<InstanceType<typeof DetailPopup>>()
-const rejectRef = shallowRef<InstanceType<typeof RejectPopup>>()
+const auditRef = shallowRef<InstanceType<typeof AuditPopup>>()
 const showDetail = ref(false)
-const showReject = ref(false)
+const showAudit = ref(false)
+/** 审核弹窗模式：pass=通过 / reject=驳回 */
+const auditMode = ref<'pass' | 'reject'>('pass')
+/** 当前正在审核的行 */
+const currentRow = ref<any>({})
 const quickReasons = [
     '材料不完整，请补充后重新提交',
     '银行流水与经营规模不匹配',
@@ -199,7 +205,7 @@ const handleExport = async () => {
     feedback.loading('正在导出中...')
     try {
         const rows = await fetchHxAllPages(businessLists, { ...formData })
-        exportHxExcel('待审核业务', exportColumns, rows)
+        exportHxExcel('风控初审', exportColumns, rows)
         feedback.closeLoading()
         feedback.msgSuccess(`已导出 ${rows.length} 条业务数据`)
     } catch (error) {
@@ -216,20 +222,34 @@ const handleDetail = async (row: any) => {
     detailRef.value?.open(row)
 }
 
+/** 审核弹窗标题 / 确认按钮文案（通过、驳回两态联动） */
+const auditTitle = computed(() => (auditMode.value === 'pass' ? '审核通过' : '驳回业务申请'))
+const auditConfirmText = computed(() => (auditMode.value === 'pass' ? '确认通过' : '确认驳回'))
+
+/** 打开审核弹窗：mode 决定通过 / 驳回文案与必填规则 */
+const openAudit = async (
+    mode: 'pass' | 'reject',
+    row: any,
+    submit: (payload: { reason: string; remark: string; images: string[] }) => void
+) => {
+    auditMode.value = mode
+    currentRow.value = row
+    showAudit.value = true
+    await nextTick()
+    auditRef.value?.open(submit)
+}
+
 const handlePass = async (row: any) => {
-    await feedback.confirm(
-        `确认审核通过？系统将向客户实名手机号 ${row.customer_mobile} 推送签约短信（e签宝签约链接），业务状态由「审核中」转为「放款中」。`
-    )
-    const res: any = await businessPass({ id: row.id })
-    feedback.msgSuccess(`已通过，签约短信已推送至 ${res?.mobile || row.customer_mobile}`)
-    getLists()
+    openAudit('pass', row, async ({ remark, images }) => {
+        const res: any = await businessPass({ id: row.id, remark, images })
+        feedback.msgSuccess(`已通过，签约短信已推送至 ${res?.mobile || row.customer_mobile}`)
+        getLists()
+    })
 }
 
 const handleReject = async (row: any) => {
-    showReject.value = true
-    await nextTick()
-    rejectRef.value?.open(row, async (reason: string) => {
-        await businessReject({ id: row.id, reason })
+    openAudit('reject', row, async ({ reason, remark, images }) => {
+        await businessReject({ id: row.id, reason, remark, images })
         feedback.msgSuccess('已驳回，客户端业务状态为「已拒绝」')
         getLists()
     })

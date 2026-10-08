@@ -83,10 +83,12 @@ export function businessPass(params: any) {
         item.sign_time = now()
         item.review_user = currentRole()
         item.review_time = now()
+        item.review_remark = params.remark || ''
+        item.review_images = params.images || []
         pushLog(
             '业务审核',
             '审核通过',
-            `业务「${item.sn}」审核通过，已向客户 ${item.customer_mobile} 推送签约短信`
+            `业务「${item.sn}」审核通过，已向客户 ${item.customer_mobile} 推送签约短信${params.remark ? `，备注：${params.remark}` : ''}${params.images?.length ? `，补充图片 ${params.images.length} 张` : ''}`
         )
     }
     return delay({
@@ -104,7 +106,13 @@ export function businessReject(params: any) {
         item.reject_reason = params.reason
         item.review_user = currentRole()
         item.review_time = now()
-        pushLog('业务审核', '审核驳回', `业务「${item.sn}」驳回：${params.reason}`)
+        item.review_remark = params.remark || ''
+        item.review_images = params.images || []
+        pushLog(
+            '业务审核',
+            '审核驳回',
+            `业务「${item.sn}」驳回：${params.reason}${params.remark ? `，备注：${params.remark}` : ''}${params.images?.length ? `，补充图片 ${params.images.length} 张` : ''}`
+        )
     }
     return delay({})
 }

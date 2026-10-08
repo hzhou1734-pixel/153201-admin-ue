@@ -191,7 +191,7 @@ export const hxMenus: RouteRecordRaw[] = [
             {
                 path: 'business',
                 name: 'HxMenuAuditBusiness',
-                meta: { title: '待审核业务', icon: 'el-icon-Document', roles: [RISK] }
+                meta: { title: '风控初审', icon: 'el-icon-Document', roles: [RISK] }
             },
             {
                 path: 'agentAuth',

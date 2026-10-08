@@ -46,6 +46,12 @@
                 <el-descriptions-item v-if="detail.reject_reason" label="驳回理由" :span="3">
                     {{ detail.reject_reason }}
                 </el-descriptions-item>
+                <el-descriptions-item v-if="detail.review_remark" label="审核备注" :span="3">
+                    {{ detail.review_remark }}
+                </el-descriptions-item>
+                <el-descriptions-item v-if="detail.review_images?.length" label="补充图片" :span="3">
+                    {{ detail.review_images.join('、') }}
+                </el-descriptions-item>
             </el-descriptions>
 
             <div class="mt-4">
