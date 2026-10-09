@@ -14,7 +14,7 @@
                 :closable="false"
                 show-icon
                 title="账号来源"
-                description="银行经办人由用户在客户端提交认证申请、经后台审核通过后生成，所属银行与经办人不可变更；此处仅可调整岗位、账号状态与备注。"
+                description="银行经办人账号由后台选择平台注册用户开通经办人权限，账号身份（姓名 / 手机号 / 所属银行 / 支行）不可变更；此处仅可调整岗位、账号状态与备注。"
             />
             <el-descriptions :column="2" border size="small" class="mb-4">
                 <el-descriptions-item label="经办人">{{ formData.name }}</el-descriptions-item>
@@ -25,10 +25,7 @@
                 <el-descriptions-item label="所属支行">
                     {{ source.branch_name || '全行' }}
                 </el-descriptions-item>
-                <el-descriptions-item label="来源申请编号" :span="2">
-                    {{ source.apply_sn || '—' }}
-                </el-descriptions-item>
-                <el-descriptions-item label="认证通过时间" :span="2">
+                <el-descriptions-item label="开通时间" :span="2">
                     {{ source.audit_time || '—' }}
                 </el-descriptions-item>
             </el-descriptions>
@@ -69,8 +66,8 @@ import feedback from '@/utils/feedback'
 
 /**
  * 编辑银行经办人
- * 账号由认证申请审核通过后生成，因此弹窗不再提供「添加」模式：
- * 银行与经办人不可变更，仅可调整岗位 / 账号状态 / 备注。
+ * 账号由后台选择平台注册用户开通后生成，因此弹窗不再提供「添加」模式：
+ * 账号身份（银行 / 经办人）不可变更，仅可调整岗位 / 账号状态 / 备注。
  */
 const emit = defineEmits(['success', 'close'])
 const formRef = shallowRef<FormInstance>()

@@ -125,7 +125,6 @@ function buildTodo(role: string) {
     return todo
 }
 
-/** 统计待认证的经办人（auth_status = 1 表示待审核） */
 /** 银行经办人在岗数量（启用状态） */
 function countBankAgentOn(): number {
     return bankAgents.filter((item) => item.status === 1).length
@@ -397,7 +396,6 @@ export function dashboardOverview(params: any = {}) {
                 agent_total: agents.length,
                 agent_on: agentOn,
                 agent_off: agents.length - agentOn,
-                agent_pending: agents.filter((i) => i.auth_status !== 2).length,
                 bank_agent_total: bankAgents.length,
                 bank_agent_on: countBankAgentOn()
             }

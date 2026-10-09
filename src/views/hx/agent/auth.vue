@@ -19,7 +19,7 @@
             <div class="mb-3 text-tx-secondary">
                 经办人：<span class="text-tx-primary">{{ detail.name || '—' }}</span>
                 <span class="ml-4">{{ detail.mobile }}</span>
-                <span class="ml-4">{{ detail.bank_name }} {{ detail.branch_name }}</span>
+                <span class="ml-4">{{ detail.bank_name }}</span>
             </div>
             <el-tree
                 ref="treeRef"

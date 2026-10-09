@@ -1,6 +1,18 @@
 import request from '@/utils/request'
 
-import { agentName, agents, bankName, branches, delay, eq, like, nextId, paginate, USE_MOCK } from './mock'
+import {
+    agentName,
+    agents,
+    bankName,
+    delay,
+    eq,
+    like,
+    nextId,
+    now,
+    paginate,
+    USE_MOCK,
+    users
+} from './mock'
 
 /* ==================== 业务经办人账号（P-02） ==================== */
 
@@ -15,17 +27,48 @@ export function agentLists(params: any) {
                 like(item.name, params.name) &&
                 like(item.mobile, params.mobile) &&
                 eq(item.bank_id, params.bank_id) &&
-                eq(item.branch_id, params.branch_id) &&
                 eq(item.status, params.status)
         )
         .map((item) => ({
             ...item,
-            bank_name: bankName(item.bank_id),
-            branch_name: branches.find((b) => b.id == item.branch_id)?.name || '—',
-            city: branches.find((b) => b.id == item.branch_id)?.city || '—',
-            auth_status_text: ['待认证', '认证中', '已认证'][item.auth_status] || '—'
+            bank_name: bankName(item.bank_id)
         }))
     return paginate(list, params)
+}
+
+/**
+ * 可选用户池（平台注册用户）
+ * 用于「选择用户 → 开通业务经办人权限」：返回平台注册用户，并标记该用户是否已具备业务经办人身份，
+ * 已开通的用户在选择器内置灰不可重复选择。
+ */
+export function agentUserPool(params: any = {}) {
+    if (!USE_MOCK) {
+        return request.get({ url: '/hx.agent/userPool', params }, { ignoreCancelToken: true })
+    }
+    const keyword = String(params.keyword || '').trim()
+    const list = users
+        .filter((user) => user.status != 0)
+        .filter(
+            (user) =>
+                !keyword ||
+                String(user.name).includes(keyword) ||
+                String(user.mobile).includes(keyword) ||
+                String(user.city || '').includes(keyword)
+        )
+        .map((user) => {
+            const owned = agents.find((item) => item.user_id == user.id || item.mobile == user.mobile)
+            return {
+                id: user.id,
+                name: user.name,
+                mobile: user.mobile,
+                city: user.city || '—',
+                source: user.source || '—',
+                register_time: user.register_time || '',
+                is_agent: !!owned,
+                agent_bank_name: owned ? bankName(owned.bank_id) : ''
+            }
+        })
+    return delay(list)
 }
 
 // 经办人全部（下拉）
@@ -35,8 +78,7 @@ export function agentAll(params: any = {}) {
         .filter((item) => item.status === 1 && eq(item.bank_id, params.bank_id))
         .map((item) => ({
             ...item,
-            bank_name: bankName(item.bank_id),
-            branch_name: branches.find((b) => b.id == item.branch_id)?.name || '—'
+            bank_name: bankName(item.bank_id)
         }))
     return delay(list)
 }
@@ -47,26 +89,23 @@ export function agentDetail(params: any) {
     const item = agents.find((row) => row.id == params.id)
     return delay({
         ...item,
-        bank_name: item ? bankName(item.bank_id) : '',
-        branch_name: item ? branches.find((b) => b.id == item.branch_id)?.name || '' : ''
+        bank_name: item ? bankName(item.bank_id) : ''
     })
 }
 
-// 经办人新增
+// 开通业务经办人（选择平台注册用户 → 开通经办人权限）
 export function agentAdd(params: any) {
     if (!USE_MOCK) return request.post({ url: '/hx.agent/add', params })
     const id = nextId(agents)
     agents.push({
         id,
-        auth_status: 0,
+        user_id: params.user_id || 0,
         perms: [],
         last_login_time: '',
-        create_time: '',
+        create_time: now(),
+        open_time: now(),
         ...params
     })
-    // 支行绑定唯一经办人
-    const branch = branches.find((b) => b.id == params.branch_id)
-    if (branch) branch.agent_id = id
     return delay({})
 }
 
@@ -74,16 +113,7 @@ export function agentAdd(params: any) {
 export function agentEdit(params: any) {
     if (!USE_MOCK) return request.post({ url: '/hx.agent/edit', params })
     const index = agents.findIndex((item) => item.id == params.id)
-    if (index > -1) {
-        const oldBranchId = agents[index].branch_id
-        agents[index] = { ...agents[index], ...params }
-        if (oldBranchId != params.branch_id) {
-            const old = branches.find((b) => b.id == oldBranchId)
-            if (old && old.agent_id == params.id) old.agent_id = 0
-            const current = branches.find((b) => b.id == params.branch_id)
-            if (current) current.agent_id = params.id
-        }
-    }
+    if (index > -1) agents[index] = { ...agents[index], ...params }
     return delay({})
 }
 

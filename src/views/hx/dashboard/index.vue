@@ -191,9 +191,7 @@
                     {{ groups.org?.agent_on || 0 }} / 停用
                     {{ groups.org?.agent_off || 0 }}）
                 </el-descriptions-item>
-                <el-descriptions-item label="未认证经办人">
-                    {{ groups.org?.agent_pending || 0 }} 人
-                </el-descriptions-item>
+
                 <el-descriptions-item label="银行经办人">
                     {{ groups.org?.bank_agent_total || 0 }} 人（在岗
                     {{ groups.org?.bank_agent_on || 0 }}）

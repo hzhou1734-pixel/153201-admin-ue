@@ -48,30 +48,13 @@
                 <template #icon>
                     <icon name="el-icon-Plus" />
                 </template>
-                新增业务经办人
+                选择用户开通业务经办人
             </el-button>
             <div :class="isAccount ? 'mt-4' : ''">
                 <el-table :data="pager.lists" size="large">
                     <el-table-column label="经办人姓名" prop="name" min-width="120" />
                     <el-table-column label="手机号" prop="mobile" min-width="140" />
                     <el-table-column label="所属银行" prop="bank_name" min-width="140" />
-                    <el-table-column
-                        label="所属支行"
-                        prop="branch_name"
-                        min-width="170"
-                        show-tooltip-when-overflow
-                    />
-                    <el-table-column label="所属市州" prop="city" min-width="120" />
-                    <el-table-column label="认证状态" min-width="110">
-                        <template #default="{ row }">
-                            <el-tag
-                                :type="row.auth_status == 2 ? 'success' : row.auth_status == 0 ? 'warning' : 'info'"
-                                size="small"
-                            >
-                                {{ row.auth_status_text }}
-                            </el-tag>
-                        </template>
-                    </el-table-column>
                     <el-table-column label="已分配权限" min-width="200">
                         <template #default="{ row }">
                             <template v-if="row.perms && row.perms.length">
@@ -120,6 +103,12 @@
 
         <edit-popup v-if="showEdit" ref="editRef" @success="getLists" @close="showEdit = false" />
         <auth-popup v-if="showAuth" ref="authRef" @success="getLists" @close="showAuth = false" />
+        <select-user-popup
+            v-if="showSelectUser"
+            ref="selectUserRef"
+            @success="getLists"
+            @close="showSelectUser = false"
+        />
     </div>
 </template>
 
@@ -132,10 +121,11 @@ import feedback from '@/utils/feedback'
 
 import AuthPopup from './auth.vue'
 import EditPopup from './edit.vue'
+import SelectUserPopup from './select-user.vue'
 
 /**
  * 账号与权限 · 业务经办人账号按职责拆为两个路由（P-02）：
- * - mode = account ：账号管理 —— 新增经办人账号、账号停用 / 启用
+ * - mode = account ：账号管理 —— **选择平台注册用户**开通业务经办人权限、账号停用 / 启用（不走认证审核）
  * - mode = perm    ：权限分配 —— 分配业务操作权限（权限归总经理）；分配后经办人凭手机号验证码经客户端个人中心登录
  */
 const props = withDefaults(defineProps<{ mode?: 'account' | 'perm' }>(), { mode: 'account' })
@@ -144,8 +134,10 @@ const isAccount = computed(() => props.mode === 'account')
 
 const editRef = shallowRef<InstanceType<typeof EditPopup>>()
 const authRef = shallowRef<InstanceType<typeof AuthPopup>>()
+const selectUserRef = shallowRef<InstanceType<typeof SelectUserPopup>>()
 const showEdit = ref(false)
 const showAuth = ref(false)
+const showSelectUser = ref(false)
 const formData = reactive({
     name: '',
     mobile: '',
@@ -168,9 +160,9 @@ const changeStatus = async (row: any) => {
 }
 
 const handleAdd = async () => {
-    showEdit.value = true
+    showSelectUser.value = true
     await nextTick()
-    editRef.value?.open('add')
+    selectUserRef.value?.open()
 }
 
 const handleEdit = async (row: any) => {

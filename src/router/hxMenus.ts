@@ -49,7 +49,7 @@ export const HX_SCENES: Record<string, HxSceneMeta> = {
     user: {
         scene: '用户管理',
         stage: '贷前 · 获客与归属 · 账号',
-        desc: '并入后台原有「用户管理」菜单。承载客户信息与归属关系（客户列表 / 客户归属分配），以及银行经办人（由认证审核通过后自动生成）、业务经办人账号两类账号的查看与维护。'
+        desc: '并入后台原有「用户管理」菜单。承载客户信息与归属关系（客户列表 / 客户归属分配），以及银行经办人、业务经办人账号两类账号的维护——账号均通过「选择平台注册用户」开通经办人权限。'
     },
     customer: {
         scene: '用户管理',
@@ -58,8 +58,8 @@ export const HX_SCENES: Record<string, HxSceneMeta> = {
     },
     audit: {
         scene: '审核中心',
-        stage: '贷前 · 准入认证 / 贷中 · 业务审核',
-        desc: '业务材料审核（归风控负责人），以及银行经办人「账号认证申请」的审核：用户在客户端提交认证申请，审核通过后该用户成为对应银行的银行经办人（经办人账号不由后台直接添加）。'
+        stage: '贷中 · 业务审核',
+        desc: '业务材料审核（归风控负责人）。经办人账号不再走认证审核：银行经办人 / 业务经办人账号统一由后台「选择平台注册用户」直接开通权限。'
     },
     loan: {
         scene: '放款管理',
@@ -192,11 +192,6 @@ export const hxMenus: RouteRecordRaw[] = [
                 path: 'business',
                 name: 'HxMenuAuditBusiness',
                 meta: { title: '风控初审', icon: 'el-icon-Document', roles: [RISK] }
-            },
-            {
-                path: 'agentAuth',
-                name: 'HxMenuAuditAgentAuth',
-                meta: { title: '经办人认证审核', icon: 'el-icon-Stamp', roles: [GM, SUPER] }
             }
         ]
     },

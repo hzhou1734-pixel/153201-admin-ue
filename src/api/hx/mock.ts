@@ -67,7 +67,6 @@ export const branches: any[] = [
         name: '长沙五一路支行',
         account: '1901 0203 0910 0012 345',
         city: '长沙市',
-        agent_id: 1,
         status: 1,
         remark: '',
         create_time: '2026-08-10 09:20:00'
@@ -78,7 +77,6 @@ export const branches: any[] = [
         name: '株洲天元支行',
         account: '1901 0203 0910 0012 888',
         city: '株洲市',
-        agent_id: 2,
         status: 1,
         remark: '',
         create_time: '2026-08-10 09:26:00'
@@ -89,7 +87,6 @@ export const branches: any[] = [
         name: '长沙芙蓉支行',
         account: '1801 0104 0400 5522 011',
         city: '长沙市',
-        agent_id: 3,
         status: 1,
         remark: '',
         create_time: '2026-08-11 10:31:00'
@@ -100,9 +97,8 @@ export const branches: any[] = [
         name: '衡阳雁峰支行',
         account: '4300 1502 0900 7788 002',
         city: '衡阳市',
-        agent_id: 0,
         status: 1,
-        remark: '暂未配置业务经办人',
+        remark: '',
         create_time: '2026-08-11 11:02:00'
     },
     {
@@ -111,7 +107,6 @@ export const branches: any[] = [
         name: '常德武陵支行',
         account: '8000 1234 5678 9090 12',
         city: '常德市',
-        agent_id: 0,
         status: 0,
         remark: '暂停业务',
         create_time: '2026-08-12 15:40:00'
@@ -122,7 +117,6 @@ export const branches: any[] = [
         name: '怀化鹤城支行',
         account: '1801 0104 0400 5522 066',
         city: '怀化市',
-        agent_id: 0,
         status: 1,
         remark: '',
         create_time: '2026-08-13 09:05:00'
@@ -137,9 +131,7 @@ export const agents: any[] = [
         name: '张建国',
         mobile: '13873110001',
         bank_id: 1,
-        branch_id: 1,
         status: 1,
-        auth_status: 2,
         perms: ['business'],
         create_time: '2026-08-10 09:24:00',
         last_login_time: '2026-09-30 08:41:12',
@@ -150,9 +142,7 @@ export const agents: any[] = [
         name: '李红梅',
         mobile: '13907310002',
         bank_id: 1,
-        branch_id: 2,
         status: 1,
-        auth_status: 2,
         perms: ['business'],
         create_time: '2026-08-10 09:28:00',
         last_login_time: '2026-09-29 17:20:05',
@@ -163,22 +153,18 @@ export const agents: any[] = [
         name: '王湘平',
         mobile: '13786100003',
         bank_id: 2,
-        branch_id: 3,
         status: 1,
-        auth_status: 0,
         perms: ['business'],
         create_time: '2026-08-11 10:33:00',
         last_login_time: '',
-        remark: '认证资料审核中'
+        remark: ''
     },
     {
         id: 4,
         name: '赵志强',
         mobile: '13508400004',
         bank_id: 3,
-        branch_id: 4,
         status: 0,
-        auth_status: 1,
         perms: ['business'],
         create_time: '2026-08-11 11:10:00',
         last_login_time: '2026-09-12 10:02:33',
@@ -190,39 +176,33 @@ export const agents: any[] = [
         name: '刘志远',
         mobile: '13873110005',
         bank_id: 1,
-        branch_id: 0,
         status: 1,
-        auth_status: 2,
         perms: ['business'],
         create_time: '2026-08-14 09:40:00',
         last_login_time: '2026-09-28 11:05:20',
-        remark: '待分配支行'
+        remark: ''
     },
     {
         id: 6,
         name: '陈晓东',
         mobile: '13907310006',
         bank_id: 2,
-        branch_id: 0,
         status: 1,
-        auth_status: 2,
         perms: ['business'],
         create_time: '2026-08-14 10:12:00',
         last_login_time: '2026-09-27 15:32:08',
-        remark: '待分配支行'
+        remark: ''
     },
     {
         id: 7,
         name: '周文斌',
         mobile: '13508400007',
         bank_id: 3,
-        branch_id: 0,
         status: 1,
-        auth_status: 2,
         perms: ['business'],
         create_time: '2026-08-15 08:55:00',
         last_login_time: '',
-        remark: '待分配支行'
+        remark: ''
     }
 ]
 
@@ -325,8 +305,7 @@ export const customers: any[] = [
 
 /**
  * 平台注册用户：由小程序 / 客户端注册产生。
- * 银行经办人认证申请的申请人即来自该用户池：用户在客户端提交认证申请（含银行 / 支行 / 岗位 / 证件材料），
- * 经管理后台审核通过后，该用户获得对应银行的「银行经办人」身份。
+ * 该用户池也是银行经办人的来源：在「业务经办人账号」页选择本池中的用户，为其开通对应银行的经办人权限。
  */
 export const users: any[] = [
     {
@@ -463,11 +442,11 @@ export const users: any[] = [
     }
 ]
 
-// ============================ 银行经办人（P-05 调整：认证申请审核通过后生成） ============================
+// ============================ 银行经办人（在册经办人列表：后台选择平台注册用户开通） ============================
 
 /**
- * 银行经办人：代表银行侧对接人员。**由用户在客户端 / 小程序提交「银行经办人认证申请」，
- * 经管理后台审核通过后自动生成**（audit_user / audit_time 即审核留痕），后台不再直接添加账号。
+ * 银行经办人：代表银行侧对接人员。由后台在「业务经办人账号」页选择平台注册用户开通权限后生成
+ * （audit_user / audit_time 即开通留痕），后台不再直接添加账号。
  * 与「业务经办人账号」区分：业务经办人负责提交业务与材料，银行经办人为银行侧对接与确认人。
  */
 export const bankAgents: any[] = [
@@ -518,282 +497,6 @@ export const bankAgents: any[] = [
         audit_time: '2026-08-20 14:12:00',
         last_login_time: '2026-09-12 10:02:33',
         remark: '已调岗，账号停用'
-    }
-]
-
-// ============================ 银行经办人认证申请（P-05 调整：经办人账号来源） ============================
-
-/** 认证申请材料：身份材料（type=1）与在职证明（type=2） */
-function authMaterials(sn: string) {
-    return [
-        { name: `${sn}-身份证正面.jpg`, type: 1, size: '1.1MB', url: '' },
-        { name: `${sn}-身份证反面.jpg`, type: 1, size: '1.0MB', url: '' },
-        { name: `${sn}-工作证明（加盖公章）.pdf`, type: 2, size: '680KB', url: '' },
-        { name: `${sn}-工牌照片.jpg`, type: 2, size: '920KB', url: '' }
-    ]
-}
-
-/**
- * 银行经办人认证申请：由用户在客户端 / 小程序自行提交，管理后台仅承担「审核」职责。
- *   · 待审核 pending   → 列表提供「审核」入口（通过 / 驳回）
- *   · 审核通过 approved → 该用户获得对应银行的「银行经办人」身份（写入 bankAgents）
- *   · 审核驳回 rejected → 记录驳回理由，申请人可在客户端修改后重新提交
- *
- * 登录规则：仅「审核通过」的经办人申请才具备前端登录并提交业务操作的权限；
- * 待审核（pending）、已驳回（rejected）以及账号已停用的经办人均无法登录前端。
- */
-export const bankAgentApplies: any[] = [
-    {
-        id: 1,
-        sn: 'HXBA20260901001',
-        user_id: 3,
-        name: '李文昊',
-        mobile: '13800001003',
-        id_card: '4302**********1537',
-        city: '株洲市',
-        bank_id: 1,
-        branch_id: 2,
-        position: '对公客户经理',
-        company: '中国工商银行株洲天元支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-01 11:20:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '申请对接我行对公经营贷业务',
-        materials: authMaterials('HXBA20260901001')
-    },
-    {
-        id: 2,
-        sn: 'HXBA20260903002',
-        user_id: 5,
-        name: '彭思远',
-        mobile: '13900002003',
-        id_card: '4304**********2225',
-        city: '怀化市',
-        bank_id: 2,
-        branch_id: 6,
-        position: '客户经理',
-        company: '中国农业银行怀化鹤城支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-03 09:45:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '',
-        materials: authMaterials('HXBA20260903002')
-    },
-    {
-        id: 3,
-        sn: 'HXBA20260906003',
-        user_id: 7,
-        name: '谢雨薇',
-        mobile: '13700003004',
-        id_card: '4307**********6602',
-        city: '衡阳市',
-        bank_id: 3,
-        branch_id: 4,
-        position: '客户经理',
-        company: '中国建设银行衡阳雁峰支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-06 16:02:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '申请承接衡阳地区业务',
-        materials: authMaterials('HXBA20260906003')
-    },
-    {
-        id: 7,
-        sn: 'HXBA20260908005',
-        user_id: 9,
-        name: '邹凯',
-        mobile: '13500004006',
-        id_card: '4306**********9934',
-        city: '岳阳市',
-        bank_id: 3,
-        branch_id: 4,
-        position: '对公客户经理',
-        company: '中国建设银行衡阳雁峰支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-08 09:26:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '申请对接我行对公业务',
-        materials: authMaterials('HXBA20260908005')
-    },
-    {
-        id: 8,
-        sn: 'HXBA20260912006',
-        user_id: 10,
-        name: '冯晓琳',
-        mobile: '13600005007',
-        id_card: '4303**********1170',
-        city: '湘潭市',
-        bank_id: 2,
-        branch_id: 3,
-        position: '客户经理',
-        company: '中国农业银行长沙芙蓉支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-12 14:38:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '',
-        materials: authMaterials('HXBA20260912006')
-    },
-    {
-        id: 9,
-        sn: 'HXBA20260918007',
-        user_id: 1,
-        name: '孙铭',
-        mobile: '13800001001',
-        id_card: '4301**********0112',
-        city: '长沙市',
-        bank_id: 1,
-        branch_id: 1,
-        position: '客户经理',
-        company: '中国工商银行长沙五一路支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-18 10:05:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '希望对接五一路支行存量客户业务',
-        materials: authMaterials('HXBA20260918007')
-    },
-    {
-        id: 10,
-        sn: 'HXBA20260924008',
-        user_id: 11,
-        name: '杨思琪',
-        mobile: '13700006009',
-        id_card: '4302**********7741',
-        city: '株洲市',
-        bank_id: 1,
-        branch_id: 2,
-        position: '综合客户经理',
-        company: '中国工商银行株洲天元支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-24 15:12:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '',
-        materials: authMaterials('HXBA20260924008')
-    },
-    {
-        id: 11,
-        sn: 'HXBA20260929009',
-        user_id: 12,
-        name: '尹浩然',
-        mobile: '13700006010',
-        id_card: '4312**********5528',
-        city: '怀化市',
-        bank_id: 2,
-        branch_id: 6,
-        position: '对公客户经理',
-        company: '中国农业银行怀化鹤城支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-29 09:44:00',
-        status: 'pending',
-        audit_user: '',
-        audit_time: '',
-        reject_reason: '',
-        remark: '承接怀化地区经营贷业务',
-        materials: authMaterials('HXBA20260929009')
-    },
-    {
-        id: 4,
-        sn: 'HXBA20260810001',
-        user_id: 2,
-        name: '周雅琴',
-        mobile: '13800001002',
-        id_card: '4301**********2028',
-        city: '长沙市',
-        bank_id: 1,
-        branch_id: 1,
-        position: '客户经理',
-        company: '中国工商银行长沙五一路支行',
-        source: '小程序认证申请',
-        apply_time: '2026-08-10 09:30:00',
-        status: 'approved',
-        audit_user: '周总经理',
-        audit_time: '2026-08-12 10:20:00',
-        reject_reason: '',
-        remark: '',
-        materials: authMaterials('HXBA20260810001')
-    },
-    {
-        id: 5,
-        sn: 'HXBA20260812002',
-        user_id: 4,
-        name: '何俊杰',
-        mobile: '13900002002',
-        id_card: '4301**********3011',
-        city: '长沙市',
-        bank_id: 2,
-        branch_id: 3,
-        position: '副行长',
-        company: '中国农业银行长沙芙蓉支行',
-        source: '小程序认证申请',
-        apply_time: '2026-08-12 14:05:00',
-        status: 'approved',
-        audit_user: '周总经理',
-        audit_time: '2026-08-15 09:35:00',
-        reject_reason: '',
-        remark: '',
-        materials: authMaterials('HXBA20260812002')
-    },
-    {
-        id: 12,
-        sn: 'HXBA20260818003',
-        user_id: 6,
-        name: '罗启明',
-        mobile: '13700003003',
-        id_card: '4304**********4419',
-        city: '衡阳市',
-        bank_id: 3,
-        branch_id: 4,
-        position: '客户经理',
-        company: '中国建设银行衡阳雁峰支行',
-        source: '小程序认证申请',
-        apply_time: '2026-08-18 09:10:00',
-        status: 'approved',
-        audit_user: '超级管理员',
-        audit_time: '2026-08-20 14:12:00',
-        reject_reason: '',
-        remark: '已调岗，账号停用',
-        materials: authMaterials('HXBA20260818003')
-    },
-    {
-        id: 6,
-        sn: 'HXBA20260904004',
-        user_id: 8,
-        name: '唐立诚',
-        mobile: '13500004005',
-        id_card: '4312**********8806',
-        city: '常德市',
-        bank_id: 4,
-        branch_id: 5,
-        position: '客户经理',
-        company: '长沙银行常德武陵支行',
-        source: '小程序认证申请',
-        apply_time: '2026-09-04 10:18:00',
-        status: 'rejected',
-        audit_user: '超级管理员',
-        audit_time: '2026-09-05 09:12:00',
-        reject_reason: '所申请支行已暂停业务，暂不开放经办人认证',
-        remark: '',
-        materials: authMaterials('HXBA20260904004')
     }
 ]
 
@@ -1341,7 +1044,7 @@ export const thirdParty: Record<string, any> = {
         secret_key: '',
         sign: '红星钱谷',
         templates: {
-            auth: 'SMS_3001', // 经办人认证结果通知
+            auth: 'SMS_3001', // 经办人权限开通通知
             sign: 'SMS_3002', // 签约链接通知（客户）
             loan: 'SMS_3003', // 放款通知（客户 / 银行经办人）
             repay: 'SMS_3004' // 回款确认通知

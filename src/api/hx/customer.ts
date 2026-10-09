@@ -95,7 +95,6 @@ function decorate(item: any, withExtras = false) {
         customer_type_text: item.customer_type === 'company' ? '企业' : '个人',
         agent_name: item.agent_id ? agentName(item.agent_id) : '',
         agent_mobile: agent?.mobile || '',
-        agent_auth_status: agent?.auth_status ?? 0,
         bank_name: agent ? bankName(agent.bank_id) : '—',
         branch_name: agent ? branchName(agent.branch_id) : (item.branch_name || '—'),
         bind_status_text: item.bind_status == 1 ? '已扫码绑定' : '未绑定',

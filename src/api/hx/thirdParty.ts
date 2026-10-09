@@ -29,7 +29,7 @@ export function thirdPartyTest(params: { key: ThirdPartyKey }) {
 export function smsTemplates() {
     if (!USE_MOCK) return request.get({ url: '/hx.thirdParty/smsTemplates' })
     return delay([
-        { key: 'auth', scene: '经办人认证结果通知', template_id: 'SMS_3001', target: '银行经办人' },
+        { key: 'auth', scene: '经办人权限开通通知', template_id: 'SMS_3001', target: '银行经办人' },
         { key: 'sign', scene: '签约通知（e签宝签约链接）', template_id: 'SMS_3002', target: '客户实名手机号' },
         { key: 'loan', scene: '放款通知', template_id: 'SMS_3003', target: '客户 + 银行经办人' },
         { key: 'repay', scene: '回款确认通知', template_id: 'SMS_3004', target: '业务经办人' }

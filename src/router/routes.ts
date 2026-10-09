@@ -97,20 +97,13 @@ export const constantRoutes: Array<RouteRecordRaw> = [
                 meta: { title: '客户归属分配' }
             },
 
-            // 审核中心 · 业务审核（原「认证审核」已下线，银行经办人改为后台直接添加）
+            // 审核中心 · 业务审核（经办人认证审核已下线：经办人账号改为后台选择用户开通权限）
             {
                 path: 'audit/business',
                 name: 'HxAuditBusiness',
                 component: () => import('@/views/hx/businessAudit/index.vue'),
                 props: { mode: 'pending' },
                 meta: { title: '风控初审' }
-            },
-            // 审核中心 · 经办人认证审核（银行经办人账号来源：用户申请 → 后台审核）
-            {
-                path: 'audit/agentAuth',
-                name: 'HxAuditAgentAuth',
-                component: () => import('@/views/hx/bankAgentAuth/index.vue'),
-                meta: { title: '经办人认证审核' }
             },
             // 放款管理 · 审批与放款登记
             {

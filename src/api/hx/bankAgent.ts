@@ -1,7 +1,6 @@
 import request from '@/utils/request'
 
 import {
-    bankAgentApplies,
     bankAgents,
     bankName,
     branchName,
@@ -9,19 +8,17 @@ import {
     delay,
     eq,
     like,
-    nextId,
-    now,
     paginate,
     pushLog,
     USE_MOCK
 } from './mock'
 
-/* ==================== 银行经办人（P-05 调整：认证申请审核通过后生成） ==================== */
+/* ==================== 银行经办人（在册经办人列表：后台选择平台注册用户开通） ==================== */
 
 /**
- * 银行经办人列表
- * 数据来源：用户在客户端提交「银行经办人认证申请」，经管理后台审核通过后自动生成，
- * 后台不再提供「添加银行经办人」入口；业务笔数按所属银行 / 支行实时统计
+ * 银行经办人列表（在册）
+ * 数据来源：后台在「业务经办人账号」页选择平台注册用户开通银行经办人权限后生成，
+ * 账号身份（姓名 / 手机号 / 所属银行 / 支行）不可变更；业务笔数按所属银行 / 支行实时统计
  */
 export function bankAgentLists(params: any) {
     if (!USE_MOCK) {
@@ -60,7 +57,7 @@ export function bankAgentDetail(params: any) {
     })
 }
 
-// 银行经办人编辑（岗位 / 状态 / 备注；银行与经办人由认证审核确定，不可变更）
+// 银行经办人编辑（岗位 / 状态 / 备注；银行与经办人由后台选择用户开通确定，不可变更）
 export function bankAgentEdit(params: any) {
     if (!USE_MOCK) return request.post({ url: '/hx.bankAgent/edit', params })
     const index = bankAgents.findIndex((item) => item.id == params.id)
@@ -95,120 +92,4 @@ export function bankAgentRemove(params: any) {
         bankAgents.splice(index, 1)
     }
     return delay({})
-}
-
-/* ==================== 银行经办人认证申请（P-05 调整：经办人账号来源） ==================== */
-
-const applyStatusText = (status: string) =>
-    status == 'pending' ? '待审核' : status == 'approved' ? '已通过' : '已驳回'
-
-/**
- * 认证申请列表
- * 用户在客户端 / 小程序提交的认证申请，管理后台在此审核
- */
-export function bankAgentApplyLists(params: any) {
-    if (!USE_MOCK) {
-        return request.get({ url: '/hx.bankAgent/applyLists', params }, { ignoreCancelToken: true })
-    }
-    const list = bankAgentApplies
-        .filter(
-            (item) =>
-                like(item.name, params.name) &&
-                like(item.mobile, params.mobile) &&
-                eq(item.bank_id, params.bank_id) &&
-                eq(item.status, params.status)
-        )
-        .map((item) => ({
-            ...item,
-            bank_name: bankName(item.bank_id),
-            branch_name: item.branch_id ? branchName(item.branch_id) : '全行',
-            status_text: applyStatusText(item.status),
-            // 登录规则：仅审核通过的申请具备前端登录权限
-            can_login: item.status == 'approved',
-            material_count: (item.materials || []).length
-        }))
-    return paginate(list, params)
-}
-
-// 认证申请详情
-export function bankAgentApplyDetail(params: any) {
-    if (!USE_MOCK) return request.get({ url: '/hx.bankAgent/applyDetail', params })
-    const item = bankAgentApplies.find((row) => row.id == params.id)
-    return delay({
-        ...item,
-        bank_name: item ? bankName(item.bank_id) : '',
-        branch_name: item && item.branch_id ? branchName(item.branch_id) : '全行',
-        status_text: item ? applyStatusText(item.status) : ''
-    })
-}
-
-/**
- * 认证申请审核
- * - result = 'pass'  ：申请状态置为「已通过」，并写入 bankAgents——该用户成为对应银行的银行经办人
- * - result = 'reject'：申请状态置为「已驳回」，记录驳回理由（必填）
- */
-export function bankAgentApplyAudit(params: any) {
-    if (!USE_MOCK) return request.post({ url: '/hx.bankAgent/applyAudit', params })
-    const apply = bankAgentApplies.find((row) => row.id == params.id)
-    if (!apply) return delay({})
-    const pass = params.result == 'pass'
-    apply.status = pass ? 'approved' : 'rejected'
-    apply.audit_user = params.audit_user || '当前登录账号'
-    apply.audit_time = now()
-    apply.reject_reason = pass ? '' : params.reason || ''
-    if (pass) {
-        // 审核通过 → 该用户获得对应银行的银行经办人身份（同一用户 + 同一银行不重复生成）
-        const exists = bankAgents.find(
-            (item) => item.user_id == apply.user_id && item.bank_id == apply.bank_id
-        )
-        if (!exists) {
-            bankAgents.unshift({
-                id: nextId(bankAgents),
-                user_id: apply.user_id,
-                apply_sn: apply.sn,
-                name: apply.name,
-                mobile: apply.mobile,
-                bank_id: apply.bank_id,
-                branch_id: apply.branch_id || 0,
-                position: apply.position || '',
-                status: 1,
-                business_count: 0,
-                audit_user: apply.audit_user,
-                audit_time: apply.audit_time,
-                last_login_time: '',
-                remark: apply.remark || ''
-            })
-        }
-        pushLog(
-            '银行经办人',
-            '认证审核通过',
-            `「${apply.name}」的银行经办人认证已通过，成为「${bankName(apply.bank_id)}」经办人`
-        )
-    } else {
-        pushLog(
-            '银行经办人',
-            '认证审核驳回',
-            `「${apply.name}」的银行经办人认证被驳回：${apply.reject_reason}`
-        )
-    }
-    return delay({})
-}
-
-/**
- * 认证申请状态统计：供列表页「待审核 / 已通过 / 已驳回」tab 计数使用
- * · pending  ：待审核申请数
- * · approved ：已通过的申请数
- * · rejected ：已驳回申请数
- * · accounts ：当前在册的银行经办人账号数（已通过且未移除）
- */
-export function bankAgentApplyCounts() {
-    if (!USE_MOCK) return request.get({ url: '/hx.bankAgent/applyCounts' })
-    const applyCount = (status: string) =>
-        bankAgentApplies.filter((item) => item.status == status).length
-    return delay({
-        pending: applyCount('pending'),
-        approved: applyCount('approved'),
-        rejected: applyCount('rejected'),
-        accounts: bankAgents.length
-    })
 }

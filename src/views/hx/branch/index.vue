@@ -59,14 +59,6 @@
                     />
                     <el-table-column label="支行账户" prop="account" min-width="200" />
                     <el-table-column label="所属市州" prop="city" min-width="130" />
-                    <el-table-column label="业务经办人" min-width="150">
-                        <template #default="{ row }">
-                            <span v-if="row.agent_name">{{ row.agent_name }}</span>
-                            <el-tag v-else type="warning" size="small" effect="plain">
-                                未配置
-                            </el-tag>
-                        </template>
-                    </el-table-column>
                     <el-table-column label="状态" min-width="110">
                         <template #default="{ row }">
                             <el-switch
@@ -78,12 +70,9 @@
                         </template>
                     </el-table-column>
                     <el-table-column label="创建时间" prop="create_time" min-width="180" />
-                    <el-table-column label="操作" width="232" fixed="right">
+                    <el-table-column label="操作" width="120" fixed="right">
                         <template #default="{ row }">
                             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-                            <el-button type="primary" link @click="handleAssign(row)">
-                                分配业务经办人
-                            </el-button>
                         </template>
                     </el-table-column>
                 </el-table>
@@ -94,12 +83,6 @@
         </el-card>
 
         <edit-popup v-if="showEdit" ref="editRef" @success="getLists" @close="showEdit = false" />
-        <agent-picker
-            v-if="showAgentPicker"
-            ref="agentPickerRef"
-            @success="getLists"
-            @close="showAgentPicker = false"
-        />
     </div>
 </template>
 
@@ -110,14 +93,11 @@ import { useDictOptions } from '@/hooks/useDictOptions'
 import { usePaging } from '@/hooks/usePaging'
 import feedback from '@/utils/feedback'
 
-import AgentPicker from './agent-picker.vue'
 import EditPopup from './edit.vue'
 
 const cityList = HUNAN_CITY_LIST
 const editRef = shallowRef<InstanceType<typeof EditPopup>>()
-const agentPickerRef = shallowRef<InstanceType<typeof AgentPicker>>()
 const showEdit = ref(false)
-const showAgentPicker = ref(false)
 const formData = reactive({
     bank_id: '',
     name: '',
@@ -158,16 +138,6 @@ const handleEdit = async (row: any) => {
     await nextTick()
     editRef.value?.open('edit')
     editRef.value?.setFormData(row)
-}
-
-/**
- * 分配业务经办人：由列表操作栏逐行调起（原「前往分配业务经办人」全局按钮已删除），
- * 弹窗从业务经办人列表中选人关联；一个支行仅一个经办人，可取消关联。
- */
-const handleAssign = async (row: any) => {
-    showAgentPicker.value = true
-    await nextTick()
-    agentPickerRef.value?.open(row)
 }
 
 onMounted(() => {
