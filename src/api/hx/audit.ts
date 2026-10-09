@@ -48,6 +48,28 @@ export function businessLists(params: any) {
     return paginate(list, params)
 }
 
+// 业务状态数量统计（风控初审页状态栏）：按当前筛选条件统计各状态数量，忽略「业务状态」筛选本身
+export function businessStatusCounts(params: any) {
+    if (!USE_MOCK) {
+        return request.get({ url: '/hx.business/statusCount', params }, { ignoreCancelToken: true })
+    }
+    const base = businesses.filter(
+        (item) =>
+            like(item.sn, params.sn) &&
+            like(item.customer_name, params.customer_name) &&
+            eq(item.bank_id, params.bank_id) &&
+            eq(item.agent_id, params.agent_id)
+    )
+    const count = (status: string) => base.filter((item) => item.status === status).length
+    return delay({
+        all: base.length,
+        auditing: count('auditing'),
+        loaning: count('loaning'),
+        rejected: count('rejected'),
+        finished: count('finished')
+    })
+}
+
 // 业务详情（含客户资料 / 银行材料；并关联同编号放款审批单的节点与放款记录，供「流程节点记录」展示）
 export function businessDetail(params: any) {
     if (!USE_MOCK) return request.get({ url: '/hx.business/detail', params })

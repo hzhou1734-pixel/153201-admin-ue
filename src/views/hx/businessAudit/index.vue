@@ -7,7 +7,7 @@
                         v-model="formData.sn"
                         placeholder="请输入业务编号"
                         clearable
-                        @keyup.enter="resetPage"
+                        @keyup.enter="handleQuery"
                     />
                 </el-form-item>
                 <el-form-item class="w-[200px]" label="客户姓名">
@@ -15,7 +15,7 @@
                         v-model="formData.customer_name"
                         placeholder="请输入客户姓名"
                         clearable
-                        @keyup.enter="resetPage"
+                        @keyup.enter="handleQuery"
                     />
                 </el-form-item>
                 <el-form-item class="w-[240px]" label="所属银行">
@@ -39,14 +39,26 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" @click="resetPage">查询</el-button>
-                    <el-button @click="resetParams">重置</el-button>
+                    <el-button type="primary" @click="handleQuery">查询</el-button>
+                    <el-button @click="handleReset">重置</el-button>
                     <el-button :disabled="exporting" @click="handleExport">导出Excel</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
 
         <el-card v-loading="pager.loading" class="mt-4 !border-none" shadow="never">
+            <div class="hx-status-bar">
+                <div
+                    v-for="tab in statusTabs"
+                    :key="tab.value"
+                    class="hx-status-tab"
+                    :class="{ 'is-active': formData.status === tab.value }"
+                    @click="switchStatus(tab.value)"
+                >
+                    <span class="hx-status-tab__label">{{ tab.label }}</span>
+                    <span class="hx-status-tab__count">{{ counts[tab.key] ?? 0 }}</span>
+                </div>
+            </div>
             <div>
                 <el-table :data="pager.lists" size="large">
                     <el-table-column label="业务编号" prop="sn" min-width="160" />
@@ -128,7 +140,7 @@
 </template>
 
 <script lang="ts" setup name="hxBusinessAudit">
-import { businessLists, businessPass, businessReject } from '@/api/hx/audit'
+import { businessLists, businessPass, businessReject, businessStatusCounts } from '@/api/hx/audit'
 import { bankAll } from '@/api/hx/bank'
 import AuditPopup from '@/views/hx/components/audit-popup.vue'
 import { useDictOptions } from '@/hooks/useDictOptions'
@@ -169,10 +181,61 @@ const formData = reactive({
     // 待审核节点默认只看审核中的业务
     status: isPending.value ? 'auditing' : ''
 })
-const { pager, getLists, resetParams, resetPage } = usePaging({
+const { pager, getLists, resetParams } = usePaging({
     fetchFun: businessLists,
     params: formData
 })
+
+/** 状态栏：标签与数量键对应 businessStatusCounts 返回字段 */
+const statusTabs = [
+    { label: '全部', value: '', key: 'all' },
+    { label: '审核中', value: 'auditing', key: 'auditing' },
+    { label: '放款中', value: 'loaning', key: 'loaning' },
+    { label: '已拒绝', value: 'rejected', key: 'rejected' },
+    { label: '已完成', value: 'finished', key: 'finished' }
+]
+/** 各状态业务数量（随筛选条件刷新，不受「业务状态」筛选本身影响） */
+const counts = ref<Record<string, number>>({
+    all: 0,
+    auditing: 0,
+    loaning: 0,
+    rejected: 0,
+    finished: 0
+})
+
+const loadCounts = async () => {
+    try {
+        counts.value = await businessStatusCounts({ ...formData })
+    } catch (error) {
+        // 统计失败不阻塞列表展示
+    }
+}
+
+/** 列表 + 数量一并刷新 */
+const refresh = () => {
+    getLists()
+    loadCounts()
+}
+
+/** 点击状态栏：切换业务状态筛选并回到第一页 */
+const switchStatus = (value: string) => {
+    if (formData.status === value) return
+    formData.status = value
+    pager.page = 1
+    refresh()
+}
+
+/** 查询：回到第一页并刷新列表与数量 */
+const handleQuery = () => {
+    pager.page = 1
+    refresh()
+}
+
+/** 重置：恢复初始筛选条件并刷新数量 */
+const handleReset = () => {
+    resetParams()
+    loadCounts()
+}
 
 const { optionsData } = useDictOptions<{ bank: any[] }>({
     bank: { api: bankAll }
@@ -243,7 +306,7 @@ const handlePass = async (row: any) => {
     openAudit('pass', row, async ({ remark, images }) => {
         const res: any = await businessPass({ id: row.id, remark, images })
         feedback.msgSuccess(`已通过，签约短信已推送至 ${res?.mobile || row.customer_mobile}`)
-        getLists()
+        refresh()
     })
 }
 
@@ -251,11 +314,80 @@ const handleReject = async (row: any) => {
     openAudit('reject', row, async ({ reason, remark, images }) => {
         await businessReject({ id: row.id, reason, remark, images })
         feedback.msgSuccess('已驳回，客户端业务状态为「已拒绝」')
-        getLists()
+        refresh()
     })
 }
 
 onMounted(() => {
-    getLists()
+    refresh()
 })
 </script>
+
+<style lang="scss" scoped>
+/* 表格上方状态栏：各业务状态标签 + 数量，点击切换筛选 */
+.hx-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .hx-status-tab {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding-bottom: 12px;
+        font-size: 14px;
+        color: var(--el-text-color-regular);
+        cursor: pointer;
+        user-select: none;
+        transition:
+            color 0.2s,
+            font-weight 0.2s;
+
+        &:hover {
+            color: var(--el-color-primary);
+        }
+
+        &.is-active {
+            color: var(--el-color-primary);
+            font-weight: 600;
+
+            &::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                bottom: -1px;
+                left: 0;
+                height: 2px;
+                background: var(--el-color-primary);
+                border-radius: 2px;
+            }
+
+            .hx-status-tab__count {
+                color: #fff;
+                background: var(--el-color-primary);
+            }
+        }
+
+        &__count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 6px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1;
+            color: var(--el-text-color-secondary);
+            background: var(--el-fill-color);
+            border-radius: 9px;
+            transition:
+                color 0.2s,
+                background 0.2s;
+        }
+    }
+}
+</style>
