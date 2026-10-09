@@ -7,7 +7,7 @@
                         v-model="formData.sn"
                         placeholder="请输入业务编号"
                         clearable
-                        @keyup.enter="resetPage"
+                        @keyup.enter="handleQuery"
                     />
                 </el-form-item>
                 <el-form-item class="w-[200px]" label="客户姓名">
@@ -15,7 +15,7 @@
                         v-model="formData.customer_name"
                         placeholder="请输入客户姓名"
                         clearable
-                        @keyup.enter="resetPage"
+                        @keyup.enter="handleQuery"
                     />
                 </el-form-item>
                 <el-form-item class="w-[240px]" label="所属银行">
@@ -38,14 +38,26 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" @click="resetPage">查询</el-button>
-                    <el-button @click="resetParams">重置</el-button>
+                    <el-button type="primary" @click="handleQuery">查询</el-button>
+                    <el-button @click="handleReset">重置</el-button>
                     <el-button :disabled="exporting" @click="handleExport">导出Excel</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
 
         <el-card v-loading="pager.loading" class="mt-4 !border-none" shadow="never">
+            <div class="hx-status-bar">
+                <div
+                    v-for="tab in statusTabs"
+                    :key="tab.value"
+                    class="hx-status-tab"
+                    :class="{ 'is-active': formData.status === tab.value }"
+                    @click="switchStatus(tab.value)"
+                >
+                    <span class="hx-status-tab__label">{{ tab.label }}</span>
+                    <span class="hx-status-tab__count">{{ counts[tab.key] ?? 0 }}</span>
+                </div>
+            </div>
             <div class="mb-3 flex items-center">
                 <span class="text-tx-secondary">
                     当前审批身份：
@@ -137,7 +149,7 @@
         <detail-popup
             v-if="showDetail"
             ref="detailRef"
-            @success="getLists"
+            @success="refresh"
             @close="showDetail = false"
         />
     </div>
@@ -145,7 +157,7 @@
 
 <script lang="ts" setup name="hxLoanApproval">
 import { bankAll } from '@/api/hx/bank'
-import { loanLists } from '@/api/hx/loan'
+import { loanLists, loanStatusCounts } from '@/api/hx/loan'
 import { useDictOptions } from '@/hooks/useDictOptions'
 import { usePaging } from '@/hooks/usePaging'
 import { HX_ROLE_SUPER, currentHxRole } from '@/config/hxRoles'
@@ -176,10 +188,59 @@ const formData = reactive({
     // 非管理员身份时只取轮到本人审批的业务（管理员看全部待办）
     role: isTodo.value && currentHxRole.value !== HX_ROLE_SUPER ? currentHxRole.value : ''
 })
-const { pager, getLists, resetParams, resetPage } = usePaging({
+const { pager, getLists, resetParams } = usePaging({
     fetchFun: loanLists,
     params: formData
 })
+
+/** 状态栏：标签与数量键对应 loanStatusCounts 返回字段 */
+const statusTabs = [
+    { label: '全部', value: '', key: 'all' },
+    { label: '审批中', value: 'pending', key: 'pending' },
+    { label: '审批通过', value: 'approved', key: 'approved' },
+    { label: '已驳回', value: 'rejected', key: 'rejected' }
+]
+/** 各审批状态业务数量（随筛选条件刷新，不受「审批状态」筛选本身影响） */
+const counts = ref<Record<string, number>>({
+    all: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
+})
+
+const loadCounts = async () => {
+    try {
+        counts.value = await loanStatusCounts({ ...formData })
+    } catch (error) {
+        // 统计失败不阻塞列表展示
+    }
+}
+
+/** 列表 + 数量一并刷新 */
+const refresh = () => {
+    getLists()
+    loadCounts()
+}
+
+/** 点击状态栏：切换审批状态筛选并回到第一页 */
+const switchStatus = (value: string) => {
+    if (formData.status === value) return
+    formData.status = value
+    pager.page = 1
+    refresh()
+}
+
+/** 查询：回到第一页并刷新列表与数量 */
+const handleQuery = () => {
+    pager.page = 1
+    refresh()
+}
+
+/** 重置：恢复初始筛选条件并刷新数量 */
+const handleReset = () => {
+    resetParams()
+    loadCounts()
+}
 
 const { optionsData } = useDictOptions<{ bank: any[] }>({
     bank: { api: bankAll }
@@ -259,10 +320,80 @@ watch(currentHxRole, (role) => {
     if (!isTodo.value) return
     formData.role = role === HX_ROLE_SUPER ? '' : role
     formData.status = 'pending'
-    resetPage()
+    pager.page = 1
+    refresh()
 })
 
 onMounted(() => {
-    getLists()
+    refresh()
 })
 </script>
+
+<style lang="scss" scoped>
+/* 表格上方状态栏：各审批状态标签 + 数量，点击切换筛选 */
+.hx-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .hx-status-tab {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding-bottom: 12px;
+        font-size: 14px;
+        color: var(--el-text-color-regular);
+        cursor: pointer;
+        user-select: none;
+        transition:
+            color 0.2s,
+            font-weight 0.2s;
+
+        &:hover {
+            color: var(--el-color-primary);
+        }
+
+        &.is-active {
+            color: var(--el-color-primary);
+            font-weight: 600;
+
+            &::after {
+                content: '';
+                position: absolute;
+                right: 0;
+                bottom: -1px;
+                left: 0;
+                height: 2px;
+                background: var(--el-color-primary);
+                border-radius: 2px;
+            }
+
+            .hx-status-tab__count {
+                color: #fff;
+                background: var(--el-color-primary);
+            }
+        }
+
+        &__count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 6px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1;
+            color: var(--el-text-color-secondary);
+            background: var(--el-fill-color);
+            border-radius: 9px;
+            transition:
+                color 0.2s,
+                background 0.2s;
+        }
+    }
+}
+</style>

@@ -68,6 +68,30 @@ export function loanLists(params: any) {
     return paginate(list, params)
 }
 
+// 审批状态数量统计（放款审批页状态栏）：按当前筛选条件统计各状态数量，忽略「审批状态」筛选本身
+export function loanStatusCounts(params: any) {
+    if (!USE_MOCK) {
+        return request.get({ url: '/hx.loan/statusCount', params }, { ignoreCancelToken: true })
+    }
+    const base = loans
+        .map(decorate)
+        .filter(
+            (item) =>
+                like(item.sn, params.sn) &&
+                like(item.customer_name, params.customer_name) &&
+                eq(item.bank_id, params.bank_id) &&
+                // 权限拆分：传入 role 时只统计「轮到该角色审批」的业务，与列表口径保持一致
+                (!params.role || item.current_node === params.role)
+        )
+    const count = (status: string) => base.filter((item) => item.status === status).length
+    return delay({
+        all: base.length,
+        pending: count('pending'),
+        approved: count('approved'),
+        rejected: count('rejected')
+    })
+}
+
 export function loanDetail(params: any) {
     if (!USE_MOCK) return request.get({ url: '/hx.loan/detail', params })
     const item = loans.find((row) => row.id == params.id)
