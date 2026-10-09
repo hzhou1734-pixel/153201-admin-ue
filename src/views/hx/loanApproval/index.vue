@@ -30,7 +30,12 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item class="w-[200px]" label="审批状态">
-                    <el-select v-model="formData.status" clearable placeholder="全部">
+                    <el-select
+                        v-model="formData.status"
+                        clearable
+                        placeholder="全部"
+                        @change="handleQuery"
+                    >
                         <el-option label="全部" value="" />
                         <el-option label="审批中" value="pending" />
                         <el-option label="审批通过" value="approved" />

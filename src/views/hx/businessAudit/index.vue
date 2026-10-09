@@ -30,12 +30,16 @@
                     </el-select>
                 </el-form-item>
                 <el-form-item class="w-[200px]" label="业务状态">
-                    <el-select v-model="formData.status" clearable placeholder="全部">
+                    <el-select
+                        v-model="formData.status"
+                        clearable
+                        placeholder="全部"
+                        @change="handleQuery"
+                    >
                         <el-option label="全部" value="" />
                         <el-option label="审核中" value="auditing" />
-                        <el-option label="放款中" value="loaning" />
-                        <el-option label="已拒绝" value="rejected" />
-                        <el-option label="已完成" value="finished" />
+                        <el-option label="已通过" value="passed" />
+                        <el-option label="已驳回" value="rejected" />
                     </el-select>
                 </el-form-item>
                 <el-form-item>
@@ -92,9 +96,7 @@
                                         ? 'warning'
                                         : row.status == 'rejected'
                                           ? 'danger'
-                                          : row.status == 'finished'
-                                            ? 'success'
-                                            : 'primary'
+                                          : 'success'
                                 "
                                 size="small"
                             >
@@ -186,21 +188,22 @@ const { pager, getLists, resetParams } = usePaging({
     params: formData
 })
 
-/** 状态栏：标签与数量键对应 businessStatusCounts 返回字段 */
+/**
+ * 状态栏：全部 / 审核中 / 已通过 / 已驳回（键名对应 businessStatusCounts 返回字段）
+ * —— 本页只体现风控初审自身结果：已通过 = 初审通过（放款中 + 已完成）。
+ */
 const statusTabs = [
     { label: '全部', value: '', key: 'all' },
     { label: '审核中', value: 'auditing', key: 'auditing' },
-    { label: '放款中', value: 'loaning', key: 'loaning' },
-    { label: '已拒绝', value: 'rejected', key: 'rejected' },
-    { label: '已完成', value: 'finished', key: 'finished' }
+    { label: '已通过', value: 'passed', key: 'passed' },
+    { label: '已驳回', value: 'rejected', key: 'rejected' }
 ]
 /** 各状态业务数量（随筛选条件刷新，不受「业务状态」筛选本身影响） */
 const counts = ref<Record<string, number>>({
     all: 0,
     auditing: 0,
-    loaning: 0,
-    rejected: 0,
-    finished: 0
+    passed: 0,
+    rejected: 0
 })
 
 const loadCounts = async () => {
@@ -313,7 +316,7 @@ const handlePass = async (row: any) => {
 const handleReject = async (row: any) => {
     openAudit('reject', row, async ({ reason, remark, images }) => {
         await businessReject({ id: row.id, reason, remark, images })
-        feedback.msgSuccess('已驳回，客户端业务状态为「已拒绝」')
+        feedback.msgSuccess('已驳回，客户端业务状态同步为「已驳回」')
         refresh()
     })
 }

@@ -36,7 +36,7 @@
                                 ? 'warning'
                                 : detail.status == 'rejected'
                                   ? 'danger'
-                                  : 'primary'
+                                  : 'success'
                         "
                         size="small"
                     >

@@ -18,6 +18,24 @@ import {
 
 /* ==================== 业务审核（P-06 / P-07） ==================== */
 
+/**
+ * 风控初审页状态口径：本页只体现「风控初审」自身的结果
+ *  —— 已通过 = 初审通过（放款中的业务已通过初审，已完成即放款完成，同样属于初审已通过）。
+ */
+const PASSED_BUSINESS_STATUS = ['loaning', 'finished']
+
+/** 业务状态 → 风控初审页展示文案 */
+const BUSINESS_STATUS_TEXT: Record<string, string> = {
+    auditing: '审核中',
+    loaning: '已通过',
+    finished: '已通过',
+    rejected: '已驳回'
+}
+
+/** 业务状态匹配：passed 为聚合筛选（放款中 + 已完成均视为初审已通过） */
+const matchBusinessStatus = (status: string, query: string) =>
+    !query || (query === 'passed' ? PASSED_BUSINESS_STATUS.includes(status) : status === query)
+
 // 业务审核列表（银行提交材料后进入待审核队列）
 export function businessLists(params: any) {
     if (!USE_MOCK) {
@@ -30,19 +48,14 @@ export function businessLists(params: any) {
                 like(item.customer_name, params.customer_name) &&
                 eq(item.bank_id, params.bank_id) &&
                 eq(item.agent_id, params.agent_id) &&
-                eq(item.status, params.status)
+                matchBusinessStatus(item.status, params.status)
         )
         .map((item) => ({
             ...item,
             bank_name: bankName(item.bank_id),
             branch_name: branchName(item.branch_id),
             agent_name: agentName(item.agent_id),
-            status_text: {
-                auditing: '审核中',
-                loaning: '放款中',
-                rejected: '已拒绝',
-                finished: '已完成'
-            }[item.status as string],
+            status_text: BUSINESS_STATUS_TEXT[item.status as string],
             material_count: item.materials.length
         }))
     return paginate(list, params)
@@ -64,9 +77,9 @@ export function businessStatusCounts(params: any) {
     return delay({
         all: base.length,
         auditing: count('auditing'),
-        loaning: count('loaning'),
-        rejected: count('rejected'),
-        finished: count('finished')
+        // 「已通过」= 初审已通过（放款中 + 已完成）
+        passed: PASSED_BUSINESS_STATUS.reduce((sum, status) => sum + count(status), 0),
+        rejected: count('rejected')
     })
 }
 
@@ -80,14 +93,7 @@ export function businessDetail(params: any) {
         bank_name: item ? bankName(item.bank_id) : '',
         branch_name: item ? branchName(item.branch_id) : '',
         agent_name: item ? agentName(item.agent_id) : '',
-        status_text: item
-            ? {
-                  auditing: '审核中',
-                  loaning: '放款中',
-                  rejected: '已拒绝',
-                  finished: '已完成'
-              }[item.status as string]
-            : '',
+        status_text: item ? BUSINESS_STATUS_TEXT[item.status as string] : '',
         // 下游放款审批单节点（放款审核）与确认放款记录
         loan_nodes: loan?.nodes || [],
         pay_user: loan?.pay_user || '',
